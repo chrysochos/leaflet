@@ -1,0 +1,155 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.1/dist/leaflet.css"
+    integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14="
+    crossorigin=""/>
+ <!-- Make sure you put this AFTER Leaflet's CSS -->
+ <script src="https://unpkg.com/leaflet@1.9.1/dist/leaflet.js"
+     integrity="sha256-NDI0K41gVbWqfkkaHj15IzU7PtMoelkzyKp8TOaFQ3s="
+     crossorigin=""></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <label for="latitude">Latitude:</label>
+        <input id="latitude" type="text" />
+        <label for="longitude">Longitude:</label>
+        <input id="longitude" type="text" />
+      </form>
+    <div id="map"></div>
+ 
+   
+</body>
+<script>
+    var map_init = L.map('map',{
+        center: [35.0977130, 33.3832669],
+        zoom:20,
+        crs:L.CRS.EPSG3857
+    });
+    var osm = L.tileLayer ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    googleStreets = L.tileLayer('http://{s}.google.com/vt?lyrs=m&x={x}&y={y}&z={z}',{
+        maxZoom: 22,
+        subdomains:['mt0','mt1','mt2','mt3']
+    }).addTo (map_init);
+    var LeafIcon = L.Icon.extend({
+        options: {
+            shadowUrl: 'leaf-shadow.png',
+            iconSize:     [38, 95],
+            shadowSize:   [50, 64],
+            iconAnchor:   [22, 94],
+            shadowAnchor: [4, 62],
+            popupAnchor:  [-3, -76]
+        }
+    });
+
+
+    var greenIcon = new LeafIcon({iconUrl: 'leaf-green.png'}),
+        redIcon = new LeafIcon({iconUrl: 'leaf-red.png'}),
+        orangeIcon = new LeafIcon({iconUrl: 'leaf-orange.png'}),
+        blueIcon = new LeafIcon({iconUrl: 'static/images/marker-icon.png'});
+    var marker = L.marker([35.0978130, 33.3832669],  {
+            icon: redIcon, 
+            alt:'tim0',
+            draggable:true, 
+            title:'Tim'
+        }).addTo(map_init).bindPopup("I am a red leaf!");
+
+    var marker = L.marker([35.0977130, 33.3832669],  {
+        icon: greenIcon, 
+        alt:'Maria',draggable:true
+    }).addTo(map_init).bindPopup("I am a green leaf!");
+    var Basemaps = {
+        "OSM": googleStreets
+    }
+
+    var data = 
+    {
+        type: "FeatureCollection",
+        features: [
+        {
+            type:"Feature",
+            properties: {
+                description: "Coors Field",
+                amenity: "Baseball Stadium",
+                popupContent: "This is where the Rockies play!",
+                color: "blue",
+           },
+
+            geometry: {
+                type: "Point",
+                coordinates: [35.09758130, 33.3832669],  
+            },
+        },
+        {
+            type:"Feature",
+            properties: {
+                description: "jjjj",
+                amenity: "kkkkkkk",
+                popupContent: "This is where the Rockies play!",
+                color: "blue",
+           },
+
+            geometry: {
+                type: "Point",
+                coordinates: [35.098758130, 33.3732669],  
+            },
+        },
+    ]
+};
+console.log(1);
+const aaa = {
+        fillcolor:"#ff7800",
+        radius:88,
+        color:"#000",
+        weight:1,
+        opacity:1,
+        fillOpacity:0.8
+};
+console.log(2);    
+  mm=  L.geoJSON(data, {
+        pointToLayer: function(feature,latlng){
+          //  console.log(feature,latlng,aaa);
+         return L.circleMarker(latlng,aaa);}  
+    });
+    console.log(mm);
+    mm.addTo(map_init).bindPopup("I am MMM!");
+    console.log(mm);  
+
+//    L.marker(feature.geometry.coordinates ,  {
+ //       icon: blueIcon, 
+ //       alt:'Maria',draggable:true
+ //   }).addTo(map_init).bindPopup("I am MMM!");
+    
+    var Overlaymaps = {
+        "Marker": marker
+    }
+    L.control.layers (Basemaps, Overlaymaps).addTo (map_init);
+    marker.on('dragend', function (e) {
+        
+        console.log(marker.getLatLng().lat)
+        
+        document.getElementById('latitude').value = marker.getLatLng().lat;
+        document.getElementById('longitude').value = marker.getLatLng().lng;
+    //    marker.bindTooltip("my tooltip text").openTooltip()
+    });
+   
+</script>
+</html>
