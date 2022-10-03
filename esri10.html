@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESRI Leaflet Dynamic Map Layer With Map Tiles</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://d19vzq90twjlae.cloudfront.net/leaflet-0.7/leaflet.css" />
+</head>
+<body>
+    <div id="map-non-tiled" style="width: 600px; height: 400px"></div>
+    <div id="map-tiled" style="width: 600px; height: 400px"></div>
+
+<script src="//cdn.jsdelivr.net/leaflet/0.7.3/leaflet.js"></script>
+<script src="//cdn.jsdelivr.net/leaflet.esri/1.0.0-rc.7/esri-leaflet.js"></script>
+  
+<script>
+  Object.defineProperty(document, "referrer", {get : function(){ return "https://eservices.dls.moi.gov.cy/arcgis/rest/services/National/CadastralMap_GR/MapServer/export?dpi=96&transparent=true&format=png32&bbox=3707510.06757006%2C4182581.4768425073%2C3708625.570451626%2C4184234.427579218&bboxSR=102100&imageSR=102100&size=467%2C692&layers=show%3A0&f=image"; }});
+(function (factory) {
+  //define an AMD module that relies on 'leaflet'
+  if (typeof define === 'function' && define.amd) {
+    define(['leaflet', 'esri-leaflet'], function (L, EsriLeaflet) {
+      return factory(L, EsriLeaflet);
+    });
+  //define a common js module that relies on 'leaflet'
+  } else if (typeof module === 'object' && typeof module.exports === 'object') {
+    module.exports = factory(require('leaflet'), require('esri-leaflet'));
+  }
+
+  if(typeof window !== 'undefined' && window.L){
+    factory(window.L, L.esri);
+  }
+}(function (L, EsriLeaflet) {
+
+EsriLeaflet.Layers.TiledDynamicMapLayer = L.TileLayer.extend({
+
+  options: L.Util.extend({}, EsriLeaflet.Layers.DynamicMapLayer.prototype.options),
+
+  _requests: [],
+
+  /**
+   * @constructor
+   * @extends {L.TileLayer}
+   * @param  {String} url
+   * @param  {Object} options
+   */
+  initialize: function(url, options) {
+    L.TileLayer.prototype.initialize.call(this, url, options);
+    EsriLeaflet.DynamicMapLayer.prototype.initialize.call(this, url, options);
+  },
+
+  /**
+   * @param  {L.Map} map
+   */
+  onAdd: function(map) {
+    if (map.options.crs && map.options.crs.code) {
+      var sr = map.options.crs.code.split(':')[1];
+      this.options.bboxSR = sr;
+      this.options.imageSR = sr;
+    }
+
+    map.on('zoomstart zoomend', this._onZoomChange, this);
+    return L.TileLayer.prototype.onAdd.call(this, map);
+  },
+
+  /**
+   * @param  {L.Map} map
+   */
+  onRemove: function(map) {
+    map.off('zoomstart zoomend', this._onZoomChange, this);
+    L.TileLayer.prototype.onRemove.call(this, map);
+    },
+
+  /**
+   * @param {Array.<Number>|Array.<String>} layers
+   * @return {L.esri.Layers.TiledDynamicMapLayer} self
+   */
+  setLayers: function(layers) {
+    this._reset();
+    return EsriLeaflet.Layers.DynamicMapLayer.prototype.setLayers.call(this, layers);
+  },
+
+  /**
+   * @param {Array.<Object>} layerDefs
+   * @return {L.esri.Layers.TiledDynamicMapLayer} self
+   */
+  setLayerDefs: function(layerDefs) {
+    this._reset();
+    return EsriLeaflet.Layers.DynamicMapLayer.prototype.setLayerDefs.call(this, layerDefs);
+  },
+
+  /**
+   * @param {Object} timeOptions
+   * @return {L.esri.Layers.TiledDynamicMapLayer} self
+   */
+  setTimeOptions: function(timeOptions) {
+    this._reset();
+    return EsriLeaflet.Layers.DynamicMapLayer.prototype.setTimeOptions.call(this, timeOptions);
+  },
+
+  /**
+   * Set/unset zooming flag to avoid unneeded requests
+   * @param  {Object} e
+   */
+  _onZoomChange: function(e) {
+    this._zooming = (e.type === 'zoomstart');
+  },
+
+  /**
+   * @param  {L.LatLngBounds} bounds
+   * @param  {L.Point}        size
+   * @return {Object}
+   */
+  _buildExportParams: function(bounds, size) {
+    var ne = this._map.options.crs.project(bounds._northEast);
+    var sw = this._map.options.crs.project(bounds._southWest);
+
+    //ensure that we don't ask ArcGIS Server for a taller image than we have actual map displaying
+    var top = this._map.latLngToLayerPoint(bounds._northEast);
+    var bottom = this._map.latLngToLayerPoint(bounds._southWest);
+
+    if (top.y > 0 || bottom.y < size.y) {
+      size.y = bottom.y - top.y;
+    }
+
+    var params = {
+        dpi: 96,
+        transparent: this.options.transparent,
+        format: this.options.format,
+      bbox: [sw.x, sw.y, ne.x, ne.y].join(','),
+      bboxSR: this.options.bboxSR,
+      imageSR: this.options.imageSR,
+      size: size.x + ',' + size.y,
+      
+    };
+
+    if (this.options.layers) {
+      params.layers = 'show:' + this.options.layers.join(',');
+    }
+
+    if (this.options.layerDefs) {
+      params.layerDefs = JSON.stringify(this.options.layerDefs);
+    }
+
+    if (this.options.timeOptions) {
+      params.timeOptions = JSON.stringify(this.options.timeOptions);
+    }
+
+    if (this.options.from && this.options.to) {
+      params.time = this.options.from.valueOf() + ',' + this.options.to.valueOf();
+    }
+
+    if (this._service.options.token) {
+      params.token = this._service.options.token;
+    }
+
+    return params;
+  },
+
+  /**
+   * @param  {Object}  tile
+   * @param  {L.Point} tilePoint
+   */
+  _loadTile: function(tile, tilePoint) {
+    tile._layer = this;
+    tile.onload = this._tileOnLoad;
+    tile.onerror = this._tileOnError;
+
+    this._adjustTilePoint(tilePoint);
+    this.getTileUrl(tilePoint, function(err, url) {
+      tile.src = url;
+    });
+
+    this.fire('tileloadstart', {
+      tile: tile
+    });
+  },
+
+  /**
+   * Async request tile url
+   * @param  {L.Point}  tilePoint
+   * @param  {Function} callback
+   */
+  getTileUrl: function(tilePoint, callback) { // (Point, Number) -> String
+
+    var map = this._map,
+      tileSize = this.options.tileSize,
+
+      nwPoint = tilePoint.multiplyBy(tileSize),
+      sePoint = nwPoint.add([tileSize, tileSize]);
+
+    var bounds = new L.LatLngBounds(map.unproject(nwPoint, tilePoint.z),
+      map.unproject(sePoint, tilePoint.z));
+    var size = new L.Point(this.options.tileSize, this.options.tileSize);
+
+    var params = this._buildExportParams(bounds, size);
+    this._requestExport(params, bounds, callback);
+  },
+
+  /**
+   * Export call, json or image straight awy
+   * @param  {Object}          params
+   * @param  {L.LatLngBounds}  bounds
+   * @param  {Function}        callback
+   */
+  _requestExport: function(params, bounds, callback) {
+    if (this.options.f === 'json') {
+      this._requests.push(this._service.get('export', params, function(error, response) {
+        callback(null, response.href, bounds);
+      }, this));
+    } else {
+      params.f = 'image';
+      callback(null, this.options.url + 'export' + L.Util.getParamString(params), bounds);
+    }
+  },
+
+  /**
+   * Bounds or params changed
+   */
+  _update: function() {
+    if (this._map && this._map._animatingZoom) {
+      return;
+    }
+    L.TileLayer.prototype._update.call(this);
+  }
+
+});
+
+(function(methods) {
+  for (var i = 0, len = methods.length; i < len; i++) {
+    EsriLeaflet.Layers.TiledDynamicMapLayer.prototype[methods[i]] =
+      EsriLeaflet.Layers.DynamicMapLayer.prototype[methods[i]];
+  }
+})([
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.getLayers as getLayers */
+  'getLayers',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.getLayerDefs as getLayerDefs */
+  'getLayerDefs',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.getTimeOptions as getTimeOptions */
+  'getTimeOptions',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.metadata as metadata */
+  'metadata',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.query as query */
+  'query',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.identify as identify */
+  'identify',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype.find as find */
+  'find',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype._getPopupData as _getPopupData */
+  '_getPopupData',
+  /** @borrows L.esri.Layers.DynamicMapLayer.prototype._propagateEvent as _propagateEvent */
+  '_propagateEvent'
+]);
+
+// factory
+EsriLeaflet.tiledDynamicMapLayer = function(url, options) {
+  return new EsriLeaflet.Layers.TiledDynamicMapLayer(url, options);
+};
+
+
+  return EsriLeaflet;
+}));
+//# sourceMappingURL=esri-leaflet-dynamic-tilelayer-src.js.map
+
+</script>
+
+
+
+
+<script>
+         
+var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+              
+// create  map1
+var map1 = new L.Map('map-non-tiled');
+L.tileLayer(osmUrl, {
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map1);
+// set the map1's starting view
+map1.setView( new L.LatLng(35.0977130, 33.3832669), 16 );
+
+
+// create  map2
+var map2 = new L.Map('map-tiled');
+L.tileLayer(osmUrl, {
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map2);
+
+// set the map2's starting view
+map2.setView( new L.LatLng(35.0977130, 33.3832669), 16 ); 
+  
+  var urlLayer = "http://maps1.arcgisonline.com/ArcGIS/rest/services/USA_Federal_Lands/MapServer";
+  var urlLayer ='https://eservices.dls.moi.gov.cy/arcgis/rest/services/National/CadastralMap_GR/MapServer';
+  var layer1 =L.esri.dynamicMapLayer(urlLayer,{
+      layers:0,
+      bboxSR:102100,
+      imageSR:102100,         
+      format:'png32',
+      transparent:true,
+      f:'image',
+      tiled:true,
+      zoom:8
+  });
+  
+  var layer2 = L.esri.tiledDynamicMapLayer(urlLayer,{
+      layers:0,
+      bboxSR:102100,
+      imageSR:102100,    
+      format:'png32',
+      transparent:true,
+      f:'image',
+      tiled:true,
+      zoom:8
+  });
+
+  // https://eservices.dls.moi.gov.cy/arcgis/rest/services/National/CadastralMap_GR/MapServer/export?dpi=96&transparent=true&format=png32&bbox=3712869.2473223805%2C4183084.1157265385%2C3713194.1046924936%2C4183239.378440195&bboxSR=102100&imageSR=102100&size=2176%2C1040&f=image
+// https://eservices.dls.moi.gov.cy/arcgis/rest/services/National/CadastralMap_GR/MapServer/export?dpi=96&transparent=true&format=png32&bbox=3716062.5671121283%2C4177130.7217283123%2C3716674.0633384096%2C4177742.217954592&bboxSR=3857&imageSR=3857&size=256%2C256&f=image
+ // https://eservices.dls.moi.gov.cy/arcgis/rest/services/National/CadastralMap_GR/MapServer/export?bbox=3715470.180142918%2C4176132.263046337%2C3716903.374423266%2C4177087.7258999012&size=600%2C400&dpi=96&format=png32&transparent=true&bboxSR=3857&imageSR=3857&f=image
+ // https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tilemap/18/103696/155352/8/8?f=json
+
+  layer1.addTo(map1);
+  layer2.addTo(map2);  
+    </script>
+</body>
+</html>

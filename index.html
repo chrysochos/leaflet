@@ -1,9 +1,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Document</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.1/dist/leaflet.css"
@@ -44,11 +42,11 @@
     });
     var osm = L.tileLayer ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    });
+    }).addTo(map_init);
     googleStreets = L.tileLayer('http://{s}.google.com/vt?lyrs=m&x={x}&y={y}&z={z}',{
         maxZoom: 22,
         subdomains:['mt0','mt1','mt2','mt3']
-    }).addTo (map_init);
+    }).addTo(map_init);
     var LeafIcon = L.Icon.extend({
         options: {
             shadowUrl: 'leaf-shadow.png',
@@ -65,19 +63,23 @@
         redIcon = new LeafIcon({iconUrl: 'leaf-red.png'}),
         orangeIcon = new LeafIcon({iconUrl: 'leaf-orange.png'}),
         blueIcon = new LeafIcon({iconUrl: 'static/images/marker-icon.png'});
-    var marker = L.marker([35.0978130, 33.3832669],  {
+    var marker1 = L.marker([35.0978130, 33.3832669],  {
             icon: redIcon, 
             alt:'tim0',
             draggable:true, 
             title:'Tim'
-        }).addTo(map_init).bindPopup("I am a red leaf!");
+        }).bindPopup("I am a red leaf!");
 
     var marker = L.marker([35.0977130, 33.3832669],  {
         icon: greenIcon, 
         alt:'Maria',draggable:true
-    }).addTo(map_init).bindPopup("I am a green leaf!");
+    }).bindPopup("I am a green leaf!");
+    
+    var markers = L.layerGroup([marker, marker1]);
+markers.addTo(map_init);
     var Basemaps = {
-        "OSM": googleStreets
+        "OSM": osm,
+        "Google": googleStreets
     }
 
     var data = 
@@ -95,7 +97,7 @@
 
             geometry: {
                 type: "Point",
-                coordinates: [35.09758130, 33.3832669],  
+                coordinates: [ 33.3832669,35.09758130],  
             },
         },
         {
@@ -109,39 +111,37 @@
 
             geometry: {
                 type: "Point",
-                coordinates: [35.098758130, 33.3732669],  
+                coordinates: [ 33.3732669, 35.098758130,],  
             },
         },
     ]
 };
+
+
+
 console.log(1);
 const aaa = {
-        fillcolor:"#ff7800",
-        radius:88,
-        color:"#000",
-        weight:1,
-        opacity:1,
-        fillOpacity:0.8
+    fillcolor:"red",
+    radius:8,
+    color:"red",
+    weight:1,
+    opacity:1,
+    fillOpacity:1,
+    draggable:true
 };
 console.log(2);    
-  mm=  L.geoJSON(data, {
-        pointToLayer: function(feature,latlng){
-          //  console.log(feature,latlng,aaa);
-         return L.circleMarker(latlng,aaa);}  
-    });
-    console.log(mm);
-    mm.addTo(map_init).bindPopup("I am MMM!");
-    console.log(mm);  
 
+// var marker = L.circleMarker([35.0977130, 33.3832669],  aaa).addTo(map_init); 
 //    L.marker(feature.geometry.coordinates ,  {
  //       icon: blueIcon, 
  //       alt:'Maria',draggable:true
  //   }).addTo(map_init).bindPopup("I am MMM!");
     
     var Overlaymaps = {
-        "Marker": marker
-    }
+        "Markers": markers
+    };
     L.control.layers (Basemaps, Overlaymaps).addTo (map_init);
+
     marker.on('dragend', function (e) {
         
         console.log(marker.getLatLng().lat)

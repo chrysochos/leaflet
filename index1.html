@@ -1,0 +1,88 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.1/dist/leaflet.css"
+    integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14="
+    crossorigin=""/>
+ <!-- Make sure you put this AFTER Leaflet's CSS -->
+ <script src="https://unpkg.com/leaflet@1.9.1/dist/leaflet.js"
+     integrity="sha256-NDI0K41gVbWqfkkaHj15IzU7PtMoelkzyKp8TOaFQ3s="
+     crossorigin=""></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <label for="latitude">Latitude:</label>
+        <input id="latitude" type="text" />
+        <label for="longitude">Longitude:</label>
+        <input id="longitude" type="text" />
+      </form>
+    <div id="map"></div>
+ 
+   
+</body>
+<script>
+    var map_init = L.map('map',{
+        center: [35.0977130, 33.3832669],
+        zoom:18,
+        crs:L.CRS.EPSG3857
+    });
+    var osm = L.tileLayer ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    googleStreets = L.tileLayer('http://{s}.google.com/vt?lyrs=m&x={x}&y={y}&z={z}',{
+        maxZoom: 22,
+        subdomains:['mt0','mt1','mt2','mt3']
+    }).addTo (map_init);
+
+
+    var Basemaps = {
+        "OSM": googleStreets
+    }
+
+    
+const aaa = {
+        fillcolor:"red",
+        radius:8,
+        color:"red",
+        weight:1,
+        opacity:1,
+        fillOpacity:1
+};
+console.log(2);    
+
+var marker = L.circleMarker([35.0977130, 33.3832669],  aaa).addTo(map_init); 
+ 
+// var  marker =   L.circleMarker([35.09878130, 33.3732669],aaa).addTo(map_init);
+
+    
+    var Overlaymaps = {
+        "Marker": marker
+    }
+    L.control.layers (Basemaps, Overlaymaps).addTo (map_init);
+    marker.on('dragend', function (e) {
+        
+        console.log(marker.getLatLng().lat)
+        
+        document.getElementById('latitude').value = marker.getLatLng().lat;
+        document.getElementById('longitude').value = marker.getLatLng().lng;
+    //    marker.bindTooltip("my tooltip text").openTooltip()
+    });
+   
+</script>
+</html>
